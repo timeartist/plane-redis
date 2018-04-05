@@ -7,6 +7,9 @@ Redis Plans
     - Reorganize the data so that it’s easier to operate against
 - Producer Consumer Queuing
     - 1 message sent to 1 receiver
+    - Advanced:
+        - Library overview: RQ for python, jesque for java
+        - Task Chaining (https://github.com/timeartist/ufyr/blob/master/ufyr/do.py)
 - Operational Data Store
     - All data for the application is stored in Redis
 - Session Caching
