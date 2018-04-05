@@ -23,6 +23,43 @@ def cached_call_to_external_resource(serialized_call, external_resource, ttl=600
      
     return value 
 
+def cache(*args, **kwargs):
+    '''
+    Simple caching decorator
+    
+    Options:
+        prefix - string - a prefix to append to the beginning of the key
+        ttl - int - time in seconds to cache for (default: 5 mins)
+        
+    Examples:
+        @cache
+        def function_to_be_cached():
+            return "Save me!"
+            
+        @cache(ttl=60):
+        def function_to_be_cached_only_for_a_minute():
+            return "My data changes quicker than most"
+    '''
+    
+    ##TODO: Figure out where the Redis Connection comes from
+    def _cache(f):
+        def _fx(*args, **fkwargs):
+            keyname_base  = prefix + ':' + f.__module__ + ':' + f.__name__ 
+            keyname_args = ':'.join(args)
+            keyname = keyname_base + keyname_args
+            
+            result = R.get(keyname)
+            
+            if result is None:
+                val = f(*args, **fkwargs)
+                R.set(keyname, result)
+                R.expire(keyname, result)
+                
+            return result
 
+                        
+    prefix = kwargs.get('prefix', '')
+    ttl = kwargs.get('ttl', 600)
+                        
 if __name__ == '__main__':
     print 'It has begun!'
