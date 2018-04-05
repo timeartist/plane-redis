@@ -10,6 +10,7 @@ Redis Plans
     - Advanced:
         - Library overview: RQ for python, jesque for java
         - Task Chaining (https://github.com/timeartist/ufyr/blob/master/ufyr/do.py)
+            - Example: Data Processing Pipeline
 - Operational Data Store
     - All data for the application is stored in Redis
 - Session Caching
