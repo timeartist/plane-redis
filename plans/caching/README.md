@@ -61,7 +61,7 @@ def cached_call_to_external_resource(serialized_call, external_resource, ttl=600
     Takes an arbitrary string `serialized_call` and attempts to find a cached value
     in Redis for it based on an md5 hash of the value as the keyname.
     
-    Failing that, passes the call onto the function passed as `external resource`,
+    Failing that, passes `serialized_call` call onto the function passed as `external resource`,
     takes the result and caches it in Redis with an expiration of `ttl` which defaults to 10 mins.
     '''
     
