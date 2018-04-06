@@ -14,7 +14,7 @@ def cached_call_to_external_resource(serialized_call, external_resource, ttl=600
     '''
     
     cache_key = md5.new(serialized_call).hexdigest()
-    value = R.get()
+    value = R.get(cache_key)
     
     if value is None:
        value = external_resource(serialized_call)
@@ -66,11 +66,11 @@ if __name__ == '__main__':
     
     print 'It has begun!'
     
-    cached_func = lambda x: return str(uuid4())
-    result = cached_call_to_external_resource('yarn', cached_func, 5)
-    assert result == cached_call_to_external_resource('yarn', cached_func, 5)
-    sleep(6)
-    assert result != cached_call_to_external_resource('yarn', cached_func, 5)
+    cached_func = lambda x: str(uuid4())
+    result = cached_call_to_external_resource('yarn', cached_func, 1)
+    assert result == cached_call_to_external_resource('yarn', cached_func, 1)
+    sleep(2)
+    assert result != cached_call_to_external_resource('yarn', cached_func, 1)
     
     
     
