@@ -28,7 +28,7 @@ def produce(message, queue_name='queue'):
   '''
   R.lpush(queue_name, message)
 
-def consume(queue_name, timeout=0):
+def consume(queue_name='queue', timeout=0):
   '''
   Return a message from queue_name, block until a message is received or a `timeout` is reached.
   Default behavior is to block indefinately
