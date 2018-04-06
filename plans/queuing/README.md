@@ -33,7 +33,7 @@ def consume(queue_name='queue', timeout=0):
   Return a message from queue_name, block until a message is received or a `timeout` is reached.
   Default behavior is to block indefinately
   '''
-  return R.brpop(queue_name, timeout)
+  return R.brpop(queue_name, timeout)[1]  ##returns a tuple of the queue name and returned value
 ```
 
 There are many libraries that extend upon this in most of the popular languages used.  They all use some form of message serialization  and some async background worker to process the messages. The often also leverage state machine patterns, especially in map reduce scenarios.
