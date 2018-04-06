@@ -13,7 +13,7 @@ def consume(queue_name='queue', timeout=0):
   Return a message from queue_name, block until a message is received or a `timeout` is reached.
   Default behavior is to block indefinately
   '''
-  return R.brpop(queue_name, timeout)
+  return R.brpop(queue_name, timeout)[1]  ##returns a tuple of the queue name and returned value
 
 
 if __name__ == '__main__':
