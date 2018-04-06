@@ -61,4 +61,16 @@ def cache(*args, **kwargs):
     ttl = kwargs.get('ttl', 600)
                         
 if __name__ == '__main__':
+    from uuid import uuid4
+    from time import sleep 
+    
     print 'It has begun!'
+    
+    cached_func = lambda x: return str(uuid4())
+    result = cached_call_to_external_resource('yarn', cached_func, 5)
+    assert result == cached_call_to_external_resource('yarn', cached_func, 5)
+    sleep(6)
+    assert result != cached_call_to_external_resource('yarn', cached_func, 5)
+    
+    
+    
