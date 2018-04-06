@@ -41,7 +41,6 @@ def cache(*args, **kwargs):
             return "My data changes quicker than most"
     '''
     
-    ##TODO: Figure out where the Redis Connection comes from
     def _cache(f):
         def _fx(*args, **fkwargs):
             keyname_base  = prefix + ':' + f.__module__ + ':' + f.__name__ 
@@ -53,7 +52,7 @@ def cache(*args, **kwargs):
             if result is None:
                 val = f(*args, **fkwargs)
                 R.set(keyname, result)
-                R.expire(keyname, result)
+                R.expire(keyname, ttl)
                 
             return result
 
