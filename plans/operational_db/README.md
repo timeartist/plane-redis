@@ -3,11 +3,13 @@ Operational DB
 
 The Operational Database use case is probably the most difficult to explain but fairly easy to implement once you understand the basics. 
 
-### The Basics
+### Life Without Tables
 
-The main idea here is to understand how to translate SQL-like ways of organizing data into more data structure driven ones.  There are likely multiple data structures or approaches that can be taken to achieve the same goal which likely would only have one primative construct (a table or a document) in other technologies.  It's therefore important to deeply understand the way the data will be used vs how it will be stored.
+The goal of this section is to understand how to translate SQL oriented ways of organizing data into more Redis like data structure driven ones. There are multiple data structures or approaches that can be taken to achieve the same goals which would only have one primative construct (a table or a document) in other technologies.  It's therefore important to deeply understand the way the data will be used vs how it will be stored.
 
-The most simple technique is to translate a SQL table idea into a [Redis hash](https://redis.io/commands#hash). 
+#### Modeling Data:
+
+##### SQL:
 
 ``` sql
 CREATE TABLE user (
@@ -24,30 +26,27 @@ INSERT INTO user
 VALUES 
   ('Jim John', '4abacd441', 'purple', 'john@jim.biz');
 ```
-
-Would translate to this:
-
+##### Redis:
 ``` redis
 > HMSET user:1 name "Jim John" password_hash 4abacd441 favorite_color purple email john@jim.biz
 OK
 ```
 
-This is still Redis with a SQL accent though, namely because of the serial user id.  It's generally more secure and simplier with Redis to use a GUID instead of a serially incrementing number.
+The most simple technique is to translate a SQL table into a [Redis HASH](https://redis.io/commands#hash). This is still Redis with a SQL accent though, namely because of the serial user id.  It's generally more secure and simplier with Redis to use a GUID instead of a serially incrementing number.
 
 
 ``` redis
 > HMSET user:9a1bffdcc8ad440c9975fd09af70e2ec name "Jim John" password_hash 4abacd441 favorite_color purple email john@jim.biz
 OK
 ```
+#### Accessing Data:
 
-To retrieve the data, in SQL you'd use the following command:
-
+##### SQL:
 ``` sql
 SELECT * FROM USER WHERE ID = 1;
 ```
 
-In Redis:
-
+##### Redis:
 ``` redis
 > HGETALL user:9a1bffdcc8ad440c9975fd09af70e2ec
 1) "name"
@@ -58,11 +57,11 @@ In Redis:
 6) "purple"
 7) "email"
 8) "john@jim.biz"
-
 ```
 
-This is quite simple so therefore may not be the most optimal approach for every scenario. Consider a user needing to login, they likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.
+This is quite a simple implementation however, so it may not be the most optimal approach for every scenario. 
 
+##### User Auth:
 ``` redis
 > HMSET emails "john@jim.biz password_hash" 4abacd441 "john@jim.biz id" 9a1bffdcc8ad440c9975fd09af70e2ec
 OK
@@ -71,7 +70,21 @@ OK
 1) "4abacd441"
 2) "9a1bffdcc8ad440c9975fd09af70e2ec"
 ```
-With this approach you can canonically create your hash key names and lookup both the user id and password value.  You can then validate the password value and if correct load the user data and log the user in.  One note on performance though, if you're going to be storing more than 512 users you may want to consider breaking up the `emails` key into sharded chunks (ex: `emails:a, emails:b` etc) to improve performance and scalability.  
+Consider a user needing to login, they likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.
+
+``` python
+
+def auth_user(email, provided_hash):
+  password_hash, user_id = R.hmget('emails', [email + " password_hash",email + " id"])
+  return password_has == provided_hash
+```
+
+
+With this approach you can canonically create your hash key names and lookup both the user id and password value.  You can then validate the password value and then, if correct, load the user data and log the user in.  
+
+-----
+
+One note on performance though, if you're going to be storing more than 512 users you may want to consider breaking up the `emails` key into sharded chunks (ex: `emails:a, emails:b` etc) to improve performance and scalability.  
 
 Alternatively, you can use a [sorted set](https://redis.io/commands#sorted_set) as an ID lookup index, but is less intuitive to use.
 
