@@ -129,3 +129,136 @@ Note especially the return type, the one from `HGETALL` (a Dict) can be immediat
 It is equally efficient to store your data as multiple keys in a hash and select the subset each time you want to use it as it is to store it in a separate key, unless you have more than 512 or more keys in your hash.  It's probably easier to break things up early on by logical ideas to simplify the coding process (ex: the ability to use `HGETALL` vs `HMGET` with explicit fields).
 
 This technique is used extensively in the other access patterns.
+
+#### One to Many:
+_A and B in which an element of A may be linked to many elements of B, but a member of B is linked to only one element of A_
+
+There's two main usecases for the one to many data model: an object has a collection of things that we want to reference independently or the object exists as a part of a global collection.  It's a common translytical problem to need to run aggregations on global groups of operational data for analytics purposes.
+
+The simplier of the two is where the object owns a collection of things.  Lets use the example of a video game:
+
+A user is the person logging in, they have an email, name, password etc. A user has various characters that have their own attributes such as names, types, display customizations and so on. 
+ 
+ <pre>
+                                              +------------+
+                                              | Character  |
+                                              +------------+
+                                              | name       |
+                                              | server     |
+                                      +-----> | display    |
+                                      |       | class      |
+                                      |       | race       |
+                                      |       | user_id    |
++-------------------------+           |       +------------+
+|User                     |           |
++-------------------------+           |       +------------+
+|email                    |           |       | Character  |
+|password_hash            |           |       +------------+
+|notification_preferences +-----------------> | name       |
+|account_level            |           |       | server     |
+|id                       |           |       | display    |
+|                         |           |       | class      |
++-------------------------+           |       | race       |
+                                      |       | user_id    |
+                                      |       +------------+
+                                      |
+                                      |       +------------+
+                                      |       | Character  |
+                                      |       +------------+
+                                      |       | name       |
+                                      +-----> | server     |
+                                              | display    |
+                                              | class      |
+                                              | race       |
+                                              | user_id    |
+                                              +------------+
+
+</pre>
+
+To do this with SQL you'd have to create two tables and then join them together to display all the characters.  
+
+``` sql
+SELECT * FROM user u
+JOIN character c ON c.user_id = u.id
+```
+
+With Redis, you'd use a hash for the user and then a separate hash for the character.
+``` redis
+> HGETALL user:john@jim.biz:character:0
+ 1) "name"
+ 2) "John Jimson"
+ 3) "server"
+ 4) "ATL-2"
+ 5) "display"
+ 6) "0"
+ 7) "class"
+ 8) "Biter"
+ 9) "race"
+10) "Zombie"
+```
+
+This techniclaly only returns one character, say we need all of them.  In Redis, you can pipeline (#todo link appendix) different commands together to get different keys.
+
+``` python
+pipeline = R.pipeline(transaction=False)
+character_limit = 5
+
+for i in range(character_limit):
+  pipeline.hgetall('user:john@jim.biz:character:' + str(i))
+  
+print pipeline.execute()
+[{'class': 'Biter',
+  'display': '0',
+  'name': 'John Jimson',
+  'race': 'Zombie',
+  'server': 'ATL-2'},
+ {'class': 'Shooter',
+  'display': '0',
+  'name': 'Jason Johnson',
+  'race': 'Human',
+  'server': 'DEN-1'},
+ {},
+ {},
+ {}]
+ ```
+ 
+ From the Redis server's perspective: 
+ 
+ ``` redis
+1523312368.449299 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:0"
+1523312368.449365 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:1"
+1523312368.449377 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:2"
+1523312368.449387 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:3"
+1523312368.449397 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:4"
+```
+Note how fast it is compared to even localhost latency if the calls are done sequentially  (#todo test with server bound latency for an even more dramatic effect)
+
+``` redis
+1523312615.787812 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:0"
+1523312615.788491 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:1"
+1523312615.789412 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:2"
+1523312615.789987 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:3"
+1523312615.790653 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:4"
+```
+
+The other variant of One to Many is the the object exists as a part of a global collection.  In this example, characters existing as a part of servers.
+
+``` redis
+> SMEMBERS server:DEN-1
+1) "user:john@jim.biz:character:0"
+2) "user:jane@jim.biz:character:0"
+3) "user:jim@john.biz:character:3"
+> SMEMBERS server:ATL-2
+1) "user:jane@jim.biz:character:1"
+2) "user:jim@john.biz:character:1"
+3) "user:john@jim.biz:character:1"
+```
+This can also be used for aggregation type patterns using the sorted set data structure or iterating over the various returned keys.  The most simple of which being a count of characters per server:
+
+``` redis
+> SCARD server:DEN-1
+(integer) 3
+> SCARD server:ATL-2
+(integer) 3
+```
+
