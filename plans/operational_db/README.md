@@ -34,11 +34,6 @@ OK
 
 The most simple technique is to translate a SQL table into a [Redis HASH](https://redis.io/commands#hash). This is still Redis with a SQL accent though, namely because of the serial user id.  It's generally more secure and simplier with Redis to use a GUID instead of a serially incrementing number.
 
-
-``` redis
-> HMSET user:9a1bffdcc8ad440c9975fd09af70e2ec name "Jim John" password_hash 4abacd441 favorite_color purple email john@jim.biz
-OK
-```
 #### Accessing Data:
 
 ##### SQL:
