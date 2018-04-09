@@ -61,7 +61,7 @@ In Redis:
 
 ```
 
-This is quite simple so therefore may not be the most optimial approach for every scenario. Consider a user needing to login, they likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the easiest one is with another hash.
+This is quite simple so therefore may not be the most optimial approach for every scenario. Consider a user needing to login, they likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.
 
 ``` redis
 > HMSET emails "john@jim.biz password_hash" 4abacd441 "john@jim.biz id" 9a1bffdcc8ad440c9975fd09af70e2ec
@@ -71,10 +71,61 @@ OK
 1) "4abacd441"
 2) "9a1bffdcc8ad440c9975fd09af70e2ec"
 ```
-With this approach you can canonically create your hash key names and lookup both the user id and password value.  You can then validate the password value and if correct load the user data and log the user in.  One note on performance though, if you're going to be storing more than 512 users you may want to consider breaking up the `emails` key into sharded chunks (ex: `emails:a, emails:b` etc) to improve performance and scalability.  It's also possible to use a [sorted set](https://redis.io/commands#sorted_set) as an ID lookup index, but is a little more counter intuitive to use.
+With this approach you can canonically create your hash key names and lookup both the user id and password value.  You can then validate the password value and if correct load the user data and log the user in.  One note on performance though, if you're going to be storing more than 512 users you may want to consider breaking up the `emails` key into sharded chunks (ex: `emails:a, emails:b` etc) to improve performance and scalability.  
 
-It's also possible to key the `user` key off of the email (ex: `user:john@jim.biz` instead of `user:9a1bffdcc8ad440c9975fd09af70e2ec`) as Redis doesn't enforce specific semantics on your keynames or alternatively with a document model by using the [reJSON Redis Module](http://rejson.io/)
+Alternatively, you can use a [sorted set](https://redis.io/commands#sorted_set) as an ID lookup index, but is less intuitive to use.
+
+It's also possible to index the `user` key off of the email (ex: `user:john@jim.biz` instead of `user:9a1bffdcc8ad440c9975fd09af70e2ec`) as Redis doesn't enforce specific semantics on your keynames.
 
 ### Relationships
 
-A common problem solved by Relational Databases is of course the management of relationships.
+A common problem solved by Relational Databases is of course the management of relationships.  
+
+In SQL, it's a common pattern to separate different logical ideas into different tables and to join them as the different facts about the data are needed.  Sometimes this is done to simplify the core tables and improve performance, but usually it's purely because that's what seemed to make sense when drawing out the original data model.  In NoSQL, it's a very common pattern to denormalize (**todo:** link to that section) the data as much as possible, structuring it in a tightly coupled way with the process it supports. 
+
+In microservices, denormalization works well as data models are often small and scope specific allowing a small handful of usage and access patterns to appear.  This is why Redis is usually chosen to back these small applications, as the data structures allow for optimal data organization for the specific usage pattern the microservice is providing.
+
+For data objects that span more than a single thing as demonstrated above, a relationship can usually be reduced down to three different types: one to one, one to many and many to many.  In Redis, this is usually demonstrated more specifically by how you want to access the data which in turn dicates how you should store it.
+
+#### One to One:
+_A and B in which one element of A may only be linked to one element of B, and vice versa._
+
+Using the example above of storing the equivilent of a table in a hash, most one to one relationships can be established easily.  What is most commonly needed with one to one relationships in Redis is the need to lookup one thing that's primary indexed as another value than what you have to look it up with or reverse indexing. 
+
+The suggestion here is to use whatever you're going to have primarily to look up your data be the primary index that's tied to the relevant hash and then use either hashes or sorted sets to create the secondary indexes.  This is what was demonstrated in the previous section. 
+
+It's also possible to break apart larger data blobs into smaller ones and then tie them together with naming conventions.  For example, you might have a basic user class and then a class that controls the metadata associated with their UI display.  The UI display one is called on every page view, whereas the user data is only ever called at login and when it is modified.
+
+``` redis
+> HMSET user:john@jim.biz name "Jim John" ui_header_color "FFFFFF" ui_background_color "000000"
+OK
+> HGETALL user:john@jim.biz
+1) "name"
+2) "Jim John"
+3) "ui_header_color"
+4) "FFFFFF"
+5) "ui_background_color"
+6) "000000"
+
+> HMGET user:john@jim.biz ui_header_color ui_background_color
+1) "FFFFFF"
+2) "000000"
+```
+
+By putting in the UI data with the user data we have to explictly call those fields each time we want that data.  It's a lot more onerous, especially from a coding perspective.
+
+``` python
+> R.hmget('user:john@jim.biz', ['ui_header_color', 'ui_background_color'])
+['FFFFFF', '000000']
+
+> R.hgetall('user:john@jim.biz:ui')
+{'ui_background_color': '000000', 'ui_header_color': 'FFFFFF'}
+```
+
+Note especially the return type, the one from `HGETALL` (a Dict) can be immediately used and passed into a template rendering function.  The one from `HMGET` requires an additional mapping step.  The preference of implementation will likely be language specific, so find an access pattern that makes the most sense from where you're accessing it.
+
+
+
+It is equally efficient to store your data as multiple keys in a hash and select the subset each time you want to use it as it is to store it in a separate key, unless you have more than 512 or more keys in your hash.  It's probably easier to break things up early on by logical ideas to simplify the coding process (ex: the ability to use `HGETALL` vs `HMGET` with explicit fields).
+
+This technique is used extensively in the other access patterns.
