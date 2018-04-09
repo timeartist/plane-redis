@@ -65,10 +65,6 @@ This is quite a simple implementation however, so it may not be the most optimal
 ``` redis
 > HMSET emails "john@jim.biz password_hash" 4abacd441 "john@jim.biz id" 9a1bffdcc8ad440c9975fd09af70e2ec
 OK
-
-> HMGET emails "john@jim.biz password_hash" "john@jim.biz id"
-1) "4abacd441"
-2) "9a1bffdcc8ad440c9975fd09af70e2ec"
 ```
 Consider a user needing to login, they likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.
 
@@ -78,7 +74,6 @@ def auth_user(email, provided_hash):
   password_hash, user_id = R.hmget('emails', [email + " password_hash",email + " id"])
   return password_has == provided_hash
 ```
-
 
 With this approach you can canonically create your hash key names and lookup both the user id and password value.  You can then validate the password value and then, if correct, load the user data and log the user in.  
 
