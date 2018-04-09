@@ -61,7 +61,7 @@ In Redis:
 
 ```
 
-This is quite simple so therefore may not be the most optimial approach for every scenario. Consider a user needing to login, they likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.
+This is quite simple so therefore may not be the most optimal approach for every scenario. Consider a user needing to login, they likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.
 
 ``` redis
 > HMSET emails "john@jim.biz password_hash" 4abacd441 "john@jim.biz id" 9a1bffdcc8ad440c9975fd09af70e2ec
@@ -75,7 +75,7 @@ With this approach you can canonically create your hash key names and lookup bot
 
 Alternatively, you can use a [sorted set](https://redis.io/commands#sorted_set) as an ID lookup index, but is less intuitive to use.
 
-It's also possible to index the `user` key off of the email (ex: `user:john@jim.biz` instead of `user:9a1bffdcc8ad440c9975fd09af70e2ec`) as Redis doesn't enforce specific semantics on your keynames.
+It's also possible to index the `user` key off of the email (ex: `user:john@jim.biz` instead of `user:9a1bffdcc8ad440c9975fd09af70e2ec`) as Redis doesn't enforce specific semantics on your keynames.  I'm going to use this in the examples going forward as it's the most simple approach to this common problem.
 
 ### Relationships
 
@@ -83,14 +83,14 @@ A common problem solved by Relational Databases is of course the management of r
 
 In SQL, it's a common pattern to separate different logical ideas into different tables and to join them as the different facts about the data are needed.  Sometimes this is done to simplify the core tables and improve performance, but usually it's purely because that's what seemed to make sense when drawing out the original data model.  In NoSQL, it's a very common pattern to denormalize (**todo:** link to that section) the data as much as possible, structuring it in a tightly coupled way with the process it supports. 
 
-In microservices, denormalization works well as data models are often small and scope specific allowing a small handful of usage and access patterns to appear.  This is why Redis is usually chosen to back these small applications, as the data structures allow for optimal data organization for the specific usage pattern the microservice is providing.
+In microservices, denormalization works well as data models are often small and scope specific allowing a small handful of usage and access patterns to appear.  This is why Redis is often chosen to back these small applications, as the data structures allow the developer to optimize the data organization to the specific usage pattern the microservice is providing.
 
-For data objects that span more than a single thing as demonstrated above, a relationship can usually be reduced down to three different types: one to one, one to many and many to many.  In Redis, this is usually demonstrated more specifically by how you want to access the data which in turn dicates how you should store it.
+For data objects that span more than a single logical concept a relationship can be reduced down one of three different types: one to one, one to many and many to many.  In Redis, this is determined more specifically by how you want to access the data which in turn dicates how you should store it.
 
 #### One to One:
 _A and B in which one element of A may only be linked to one element of B, and vice versa._
 
-Using the example above of storing the equivilent of a table in a hash, most one to one relationships can be established easily.  What is most commonly needed with one to one relationships in Redis is the need to lookup one thing that's primary indexed as another value than what you have to look it up with or reverse indexing. 
+Using the example above of storing a SQL table as a Redis hash, most logical one to one relationships can be established easily by putting the data in as a key in the Redis Hash where it would otherwise be in a column in a SQL table. The challenge with this however is the need to lookup one thing that's primary indexed as another value than what you have to look it up with.  This is often referred to as reverse indexing.
 
 The suggestion here is to use whatever you're going to have primarily to look up your data be the primary index that's tied to the relevant hash and then use either hashes or sorted sets to create the secondary indexes.  This is what was demonstrated in the previous section. 
 
