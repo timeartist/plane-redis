@@ -10,7 +10,7 @@ This is just one of the many usecases for state machines.  Probably the most com
 Another common usage is a map reduce system.
 
 ```
-               Map           Reduce
+               Map               Reduce
 
                    Workers
 
@@ -62,7 +62,7 @@ class Mapper:
             chunk_name = self.name + ':' + str(chunk)
             try:
                 R.lpush(chunk_name, *self.items[offset:end])
-            except:
+            except IndexError:
                 R.lpush(chunk_name, *self.items[offset:-1])
 
     def reduce(self):
