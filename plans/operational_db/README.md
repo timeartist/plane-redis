@@ -66,8 +66,8 @@ Consider a user needing to login, they likely are not going to supply you their 
 ``` python
 
 def auth_user(email, provided_hash):
-  password_hash, user_id = R.hmget('emails', [email + " password_hash",email + " id"])
-  return password_has == provided_hash
+  password_hash, user_id = R.hmget('emails', [email + " password_hash", email + " id"])
+  return password_hash == provided_hash
 ```
 
 With this approach you can canonically create your hash key names and lookup both the user id and password value.  You can then validate the password value and then, if correct, load the user data and log the user in.  
