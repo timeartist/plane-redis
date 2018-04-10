@@ -5,7 +5,7 @@ The Operational Database use case is probably the most difficult to explain but 
 
 ### Life Without Tables
 
-The goal of this section is to understand how to translate SQL oriented ways of organizing data into more Redis like data structure driven ones. There are multiple data structures or approaches that can be taken to achieve the same goals which would only have one primative construct (a table or a document) in other technologies.  It's therefore important to deeply understand the way the data will be used vs how it will be stored.
+The goal of this section is to understand how to translate SQL oriented ways of organizing data into more Redis like ones. There are multiple data structures available to solve the same problems which would only have one primative construct (ex: a table or a document) in other technologies.  It's therefore important to deeply understand the way the data will be used when using Redis.
 
 #### Modeling Data:
 
@@ -32,7 +32,7 @@ VALUES
 OK
 ```
 
-The most simple technique is to translate a SQL table into a [Redis HASH](https://redis.io/commands#hash). This is still Redis with a SQL accent though, namely because of the serial user id.  It's generally more secure and simplier with Redis to use a GUID instead of a serially incrementing number.
+The most simple technique is to translate a SQL table into a [Redis HASH](https://redis.io/commands#hash). This is still Redis with a SQL accent though, namely because of the serial user id.  It's generally more secure and simplier with Redis to use a GUID instead of a serially incrementing number. 
 
 #### Accessing Data:
 
@@ -65,41 +65,42 @@ Consider a user needing to login, they likely are not going to supply you their 
 
 ``` python
 
-def auth_user(email, provided_hash):
+def auth_user(email):
   '''
   Pull the the user id and the password hash
-  Return if it matches and the corresponding user id
+  return the corresponding password hash and email as a tuple
   '''
-  password_hash, user_id = R.hmget('emails', [email + " password_hash", email + " id"])  ##space delimit email and lookup subkey
-  return password_hash == provided_hash, user_id
+  return R.hmget('emails', [email + " password_hash", email + " id"])  ##space delimit email and lookup subkey
 ```
 
 With this approach you can canonically create your hash key names and lookup both the user id and password value.  You can then validate the password value and then, if correct, load the user data and log the user in.  
 
-An important caviate however is around data size and lookup frequency; if you're going to be storing more than 512 users or will be using this index very often (more often than once a session) you may want to consider breaking up the `emails` key into sharded chunks (ex: `emails:a, emails:b` etc) to improve performance and scalability.  
+If you're going to be storing more than 512 users or will be using this index very often (more often than once a session) you may want to additionally consider breaking up the `emails` key into sharded chunks (ex: `emails:a, emails:b` etc) to improve performance and scalability, otherwise your Operational DB will bottle neck on that single key.
 
-It's also possible to index the `user` key off of the email (ex: `user:john@jim.biz` instead of `user:9a1bffdcc8ad440c9975fd09af70e2ec`) as Redis doesn't enforce specific semantics on your keynames. The trade off here is that it makes relationships harder to maintain as when a user changes an email you have to update it in all the places that the relationship id exists.
+As well, it's possible to index the `user` key off of the email (ex: `user:john@jim.biz` instead of `user:9a1bffdcc8ad440c9975fd09af70e2ec`) as Redis doesn't enforce specific semantics on your keynames. The trade off here is that it makes relationships harder to maintain as when a user changes an email you have to update it in all the places that the relationship id exists.
 
 I'm going to use this in the examples going forward as it's the most simple approach to this common problem, but you'll quickly see why it struggles to scale.
 
 ### Relationships
 
-In SQL, it's a common pattern to separate different logical ideas into different tables and to join them as the different facts about the data are needed.  Sometimes this is done to simplify the core tables and improve performance, but usually it's purely because that's what seemed to make sense when drawing out the original data model.  
+In SQL, it's a common pattern to separate different logical ideas into different tables and to join to them as the different facts about the data when needed.  Providing a generic data platform.  This often times can become a monolith or a single point of failure.
 
-In NoSQL, it's a very common pattern to denormalize (**#todo:** link to that section) the data as much as possible, structuring it in a tightly coupled way with the process it supports. 
+In NoSQL, it's a common pattern to denormalize the data (link) as much as possible, structuring it in a tightly coupled way with the process that it supports.  This provides a specific data platform that may duplicate data in order to optimize for development or data access speed.
 
-NoSQL is used a lot with microservices because denormalization works well.  Data models are often small and scope is specific allowing a small handful of usage and access patterns to appear.  This is why Redis is often chosen to back these small applications, as the data structures allow the developer to optimize the data organization to the specific usage pattern the microservice is providing.
+NoSQL is used a lot with microservices because this denormalization technique is symphonic to the microservice's goal of being lightweight and independently scalable.  Data models are small and usage scope is specific allowing only handful of patterns to appear.  Redis is often chosen to back these small applications as the different data structures allow the developer to optimize usage to be specific to the function the microservice is providing.  As well, databases can be scaled and deployed independantly, allowing for much finer control over application performance.
 
-For data objects that span more than a single logical concept a relationship can be reduced down one of three different types: one to one, one to many and many to many.  In Redis, this is determined more specifically by how you want to access the data which in turn dicates how you should store it.
+Logical relationships between objects has often times been seen as a challenge for Redis, but many techniques exist to support them.  These relationships can be primarily broken down one of three different types: one to one, one to many and many to many. 
 
 #### One to One:
 _A and B in which one element of A may only be linked to one element of B, and vice versa._
 
-Most logical one to one relationships can be established easily by putting the data in as a key in the Redis Hash where it would otherwise be in a column in a SQL table, as demonstrated above. The challenge with this however is the need to lookup one thing that's primary indexed as another value than what's available.
+Most logical one to one relationships can be established easily by putting the data in as a key in the Redis Hash where it would otherwise be in a column in a SQL table. The challenge with this however is the need to lookup one thing that's primary indexed as another value than what's available.  This was the problem explained by the previous section.
 
-The suggestion here is to use whatever you're going to have primarily or initially to look up your data be the primary index that's tied to the relevant hash. For more sophisticated patterns you can use either hashes or sorted sets to create the secondary indexes.  This was the technique demonstrated in the previous section. 
+The suggestion here is to use whatever you're going to have primarily or initially to look up your data be the primary index that's tied to the relevant hash. For more sophisticated patterns you can use either hashes or sorted sets to create the secondary indexes.  This was the technique used in the previous section. 
 
-##### EXAMPLE - Display Metadata:
+##### EXAMPLE - Display Metadata - Using Multiple Hashes for One to One Relationships:
+
+Unlike in SQL where logical entities are broken up by their meaningful assocations, denormalized one to one relationships in Redis and the decision to use a single vs multiple hashes comes down mainly to how frequently you want to access the data and how much of it there is.  Frequently accessed subsets of data or large hashes should be broken down so they can scale more easily and be accessed more efficiently by developers.
 
 ``` redis
 > HMSET user:john@jim.biz name "Jim John" ui_header_color "FFFFFF" ui_background_color "000000"
@@ -129,14 +130,12 @@ Here we have a basic user data and then metadata that controls the UI display.  
 
 Note especially the return type, the one from `HGETALL` (Dict) can be immediately used and passed into a template rendering function.  The one from `HMGET` (List) requires an additional mapping step.  The preference of implementation will likely be language specific, so find an access pattern that makes the most sense from where you're accessing it.
 
-Additionally, It is equally efficient to store your data as multiple keys in a hash and select the subset each time you want to use it as it is to store it in a separate key so therefore the two above commands should perform more or less the same as one another.
-
-This technique is used extensively in the other access patterns.
+Additionally, It is equally efficient to store your data as multiple keys in a hash and select the subset each time you want to use it as it is to store it in a separate key so therefore the two above commands should perform more or less the same as one another.  This is as long as you have fewer than 512 keys. 
 
 #### One to Many:
 _A and B in which an element of A may be linked to many elements of B, but a member of B is linked to only one element of A_
 
-There's two main usecases for the one to many data model: an object has a collection of things that we want to reference independently or the object exists as a part of a global collection.  It's a common translytical problem to need to run aggregations on global groups of operational data for analytics purposes.
+There's two main use cases for the one to many data model: an object has a collection of things that we want to reference independently or the object exists as a part of a global collection.  It's a common translytical problem to need to run aggregations on global groups of operational data.
 
 The simpler of the two is where the object owns a collection of things.  Lets use the example of a video game:
 
@@ -202,7 +201,7 @@ JOIN character c ON c.user_id = u.id
 10) "Zombie"
 ```
 
-Note the separate `HASH`es mirroring the table structure of the SQL version.  This however only returns one character, say we need all of them.  In Redis, you can pipeline (#todo link appendix) different commands together to get different keys.
+Note the separate `HASH`es mirroring the table structure of the SQL version.  This however only returns one character, say we need all of them.  In Redis, you can pipeline (link) different commands together to get different keys.
 
 ``` python
 pipeline = R.pipeline(transaction=False)
@@ -248,6 +247,7 @@ Note how fast it is compared to even localhost latency if the calls are done seq
 1523312615.790653 [0 127.0.0.1:63873] "HGETALL" "user:john@jim.biz:character:4"
 ```
 
+##### Global Collections:
 The other variant of One to Many is the the object exists as a part of a global collection.  In this example, characters existing as a part of servers.
 
 ``` redis
