@@ -67,8 +67,7 @@ Consider a user needing to login, they likely are not going to supply you their 
 
 def auth_user(email):
   '''
-  Pull the the user id and the password hash
-  return the corresponding password hash and email as a tuple
+  given a user's email return the corresponding password hash and user id as a tuple
   '''
   return R.hmget('emails', [email + " password_hash", email + " id"])  ##space delimit email and lookup subkey
 ```
