@@ -56,12 +56,12 @@ SELECT * FROM USER WHERE ID = 1;
 
 This is quite a simple implementation however, so it may not be the most optimal approach for every scenario. 
 
-##### EXAMPLE - User Auth - Hashes with multi-key Keys as Reverse Indexes:
+##### EXAMPLE - User Auth - Hashes with Compound Keys as Reverse Indexes:
 ``` redis
 > HMSET emails "john@jim.biz password_hash" 4abacd441 "john@jim.biz id" 9a1bffdcc8ad440c9975fd09af70e2ec
 OK
 ```
-Consider a user needing to login, they likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.  By using a space to delimit between the lookup value and the key you want you can store various bits of useful information. 
+A user needs to login.  They likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.  By using a space to delimit between the lookup value and the key you want you can store various bits of useful information. 
 
 ``` python
 
@@ -72,7 +72,7 @@ def auth_user(email):
   return R.hmget('emails', [email + " password_hash", email + " id"])  ##space delimit email and lookup subkey
 ```
 
-With this approach you can canonically create your hash key names and lookup both the user id and password value.  You can then validate the password value and then, if correct, load the user data and log the user in.  
+With this approach you can canonically create your hash key names and lookup both the user id and password value.  You can then validate the password value and - if correct - load the user data and log the user in.  
 
 If you're going to be storing more than 512 users or will be using this index very often (more often than once a session) you may want to additionally consider breaking up the `emails` key into sharded chunks (ex: `emails:a, emails:b` etc) to improve performance and scalability, otherwise your Operational DB will bottle neck on that single key.
 
@@ -82,11 +82,11 @@ I'm going to use this in the examples going forward as it's the most simple appr
 
 ### Relationships
 
-In SQL, it's a common pattern to separate different logical ideas into different tables and to join to them as the different facts about the data when needed.  Providing a generic data platform.  This often times can become a monolith or a single point of failure.
+In SQL, it's a common pattern to separate different logical ideas into different tables and to join to them as the different facts about the data are needed.  While providing a generic data platform, this often times can become a monolith or a single point of failure.
 
-In NoSQL, it's a common pattern to denormalize the data (link) as much as possible, structuring it in a tightly coupled way with the process that it supports.  This provides a specific data platform that may duplicate data in order to optimize for development or data access speed.
+In NoSQL, it's a common pattern to denormalize the data (link) as much as possible, structuring it in a tightly coupled way with the process that it supports.  This provides a more specific data platform that may duplicate data in order to optimize for development or data access speed.
 
-NoSQL is used a lot with microservices because this denormalization technique is symphonic to the microservice's goal of being lightweight and independently scalable.  Data models are small and usage scope is specific allowing only handful of patterns to appear.  Redis is often chosen to back these small applications as the different data structures allow the developer to optimize usage to be specific to the function the microservice is providing.  As well, databases can be scaled and deployed independantly, allowing for much finer control over application performance.
+The denormalization technique is used often with microservices as it's symphonic to the microservice's goal of being lightweight and independently scalable.  In microservice architectures, data models are small and usage scope is specific allowing only handful of patterns to appear.  By using Redis to back these small applications, the different data structures allow the developer to optimize usage to be specific to the function the microservice is providing.  Databases can also be scaled and deployed independantly, allowing for much finer control over application performance.
 
 Logical relationships between objects has often times been seen as a challenge for Redis, but many techniques exist to support them.  These relationships can be primarily broken down one of three different types: one to one, one to many and many to many. 
 
