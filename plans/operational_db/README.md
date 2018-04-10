@@ -5,7 +5,7 @@ The Operational Database use case is probably the most difficult to explain but 
 
 ### Life Without Tables
 
-The goal of this section is to understand how to translate SQL oriented ways of organizing data into more Redis like ones. There are multiple data structures available to solve the same problems which would only have one primative construct (ex: a table or a document) in other technologies.  It's therefore important to deeply understand the way the data will be used when using Redis.
+The goal of this section is to understand how to translate SQL oriented ways of organizing data into more Redis like ones. There are multiple data structures available to solve the same problems which would only have one primative construct (ex: a table or a document) in other technologies.  It's therefore important to deeply understand the way the data will be accessed when using Redis.
 
 #### Modeling Data:
 
