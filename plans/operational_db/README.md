@@ -56,7 +56,7 @@ SELECT * FROM USER WHERE ID = 1;
 
 This is quite a simple implementation however, so it may not be the most optimal approach for every scenario. 
 
-##### EXAMPLE - User Auth:
+##### EXAMPLE - User Auth - HASHES with Multi-Key Keys as Reverse Indexes:
 ``` redis
 > HMSET emails "john@jim.biz password_hash" 4abacd441 "john@jim.biz id" 9a1bffdcc8ad440c9975fd09af70e2ec
 OK
