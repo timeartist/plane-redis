@@ -17,4 +17,4 @@ Instructions:
 
 5. Sign in with `admin` + `password`
 
-6. Verify session keys via `redis-cli keys *` 
+6. Verify session keys via `redis-cli keys '*'` 
