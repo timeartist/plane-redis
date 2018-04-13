@@ -259,7 +259,7 @@ Note how fast it is compared to even localhost latency if the calls are done seq
 ```
 
 ##### Global Collections:
-The other variant of One to Many is tjat the object exists as a part of a global collection.  In this example, characters existing as a part of servers.
+The other variant of One to Many is that the object exists as a part of a global collection.  In this example, characters existing as a part of servers.
 
 ``` redis
 > SMEMBERS server:DEN-1
