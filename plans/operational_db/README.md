@@ -1,11 +1,15 @@
 Operational DB
 =================
 
-The Operational Database use case is probably the most difficult to explain but fairly easy to implement once you understand the basics. 
+Increasingly, due to its flexibility, Redis is chosen to be the primary database of record for an application.  This is extremely common in microservice architectures and is becoming more and more common amongst the whole application stack.  However, it's not always inuitive to map the existing data modeling process to be more Redis oriented. 
+
+Redis is going to exist on the same level of abstraction your code does.  Unlike most other DB platforms, which dictate the form factor of the data, Redis gives you the same tools you have in your code and you can use those tools to treat Redis as a shared memory pool for the whole application stack.  Figuring out how to start thinking in Redis can be a bit tricky at first but quickly becomes natural. 
+
+The following section explains how to translate relational DB concepts to Redis ones.  They're not the only techniques available, but are a good basis especially for those coming from a SQL background.  
 
 ### Life Without Tables
 
-The goal of this section is to understand how to translate SQL oriented ways of organizing data into more Redis like ones. There are multiple data structures available to solve the same problems which would only have one primative construct (ex: a table or a document) in other technologies.  It's therefore important to deeply understand the way the data will be accessed when using Redis.
+The first thing most SQL practitioners have when looking at Redis is the lack of tables.  Don't worry, we still have a similar idea, they're called [hashes]((https://redis.io/commands#hash) and once you understand how to use them you'll realize they're capable of solving any kind of mapping problem you can throw at them.
 
 #### Modeling Data:
 
@@ -32,7 +36,9 @@ VALUES
 OK
 ```
 
-The most simple technique is to translate a SQL table into a [Redis HASH](https://redis.io/commands#hash). This is still Redis with a SQL accent though, namely because of the serial user id.  It's generally more secure and simplier with Redis to use a GUID instead of a serially incrementing number. 
+Above you can see a simple table DDL and `INSERT` statement.  The equivilent Redis command would be `HMSET` (link) which accomplishes the same thing in terms of storing the same data in a way that's mapped to fields (otherwise known as columns in SQL).  
+
+Note the movement of the ID from the row to the Redis keyname.  Most of the relational nature of data in SQL RDBMSes comes down to embedding the ID of one kind of thing into the data of another kind of thing and then using those IDs to tie the two together. You can still use IDs for mapping in Redis, but you'll see soon there are other approaches to accomplish this as well.
 
 #### Accessing Data:
 
@@ -54,14 +60,16 @@ SELECT * FROM USER WHERE ID = 1;
 8) "john@jim.biz"
 ```
 
-This is quite a simple implementation however, so it may not be the most optimal approach for every scenario. 
+Here's the read side of the write we made earlier.  Note the change to the user ID in the Redis example, it's generally simplier with Redis to use a GUID instead of a serially incrementing number as otherwise you have to keep track of what the number currently is when creating the data.  
+
+Data access patterns are usually the main design consideration with Redis.  Here we have the primary index being a user ID.  Let's look at the limitations that creates and some of the techniques we can use to provide a more robust level of searchability.
 
 ##### EXAMPLE - User Auth - Hashes with Compound Keys as Reverse Indexes:
 ``` redis
 > HMSET emails "john@jim.biz password_hash" 4abacd441 "john@jim.biz id" 9a1bffdcc8ad440c9975fd09af70e2ec
 OK
 ```
-A user needs to login.  They likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.  By using a space to delimit between the lookup value and the name of the data point you need, you can store various bits of useful information. 
+Here a user needs to login.  They likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.  By using a space to delimit between the lookup value and the name of the data point you need, you can store various bits of useful information. 
 
 ``` python
 
