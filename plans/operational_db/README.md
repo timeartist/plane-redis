@@ -9,7 +9,7 @@ The following section explains how to translate relational DB concepts to Redis 
 
 ### Life Without Tables
 
-The first thing most SQL practitioners have when looking at Redis is the lack of tables.  Don't worry, we still have a similar idea, they're called [hashes]((https://redis.io/commands#hash) and once you understand how to use them you'll realize they're capable of solving any kind of mapping problem you can throw at them.
+The first thing most SQL practitioners have when looking at Redis is the lack of tables.  Don't worry, we still have a similar idea, they're called [hashes](https://redis.io/commands#hash) and once you understand how to use them you'll realize they're capable of solving any kind of mapping problem you can throw at them.
 
 #### Modeling Data:
 
@@ -44,7 +44,7 @@ Note the movement of the ID from the row to the Redis keyname.  Most of the rela
 
 ##### SQL:
 ``` sql
-SELECT * FROM USER WHERE ID = 1;
+SELECT * FROM user WHERE id = 1;
 ```
 
 ##### Redis:
@@ -65,11 +65,13 @@ Here's the read side of the write we made earlier.  Note the change to the user 
 Data access patterns are usually the main design consideration with Redis.  Here we have the primary index being a user ID.  Let's look at the limitations that creates and some of the techniques we can use to provide a more robust level of searchability.
 
 ##### EXAMPLE - User Auth - Hashes with Compound Keys as Reverse Indexes:
+Here a user needs to login.  They likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.
 ``` redis
 > HMSET emails "john@jim.biz password_hash" 4abacd441 "john@jim.biz id" 9a1bffdcc8ad440c9975fd09af70e2ec
 OK
-```
-Here a user needs to login.  They likely are not going to supply you their user id but instead a login name or email.  There's a few different ways you can approach this but the most robust is with another hash.  By using a space to delimit between the lookup value and the name of the data point you need, you can store various bits of useful information. 
+``` 
+
+By using a space to delimit between the lookup value and the name of the data point you need, you can store various bits of useful information. 
 
 ``` python
 
