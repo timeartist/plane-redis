@@ -326,5 +326,5 @@ WHERE c.id = 1
 ```
 
 ``` redis
-LRANGE user:john@jim.biz:character:0:items 0 -1
+> LRANGE user:john@jim.biz:character:0:items 0 -1
 ```
