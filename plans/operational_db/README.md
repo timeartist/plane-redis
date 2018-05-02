@@ -316,3 +316,15 @@ This can also be used for aggregation type patterns using the set or sorted set 
                                               | user_id    |                                      +------------+
                                               +------------+
 </pre>
+
+
+``` sql
+SELECT * FROM character c
+JOIN character_items ci on ci.character_id = c.id
+JOIN item i on i.id = ci.item_id
+WHERE c.id = 1
+```
+
+``` redis
+LRANGE user:john@jim.biz:character:0:items 0 -1
+```
