@@ -1,7 +1,7 @@
 Operational DB
 =================
 
-Increasingly, due to its flexibility, Redis is chosen to be the primary database of record for an application.  This is extremely common in microservice architectures and is becoming more and more common amongst the whole application stack.  However, it's not always inuitive to map the existing data modeling process to be more Redis oriented. 
+Due to its flexibility, Redis is chosen to be the primary database of record for an application.  This is extremely common in microservice architectures.  However, it's not always inuitive to pivot the existing data modeling process to be more Redis oriented. 
 
 Redis is going to exist on the same level of abstraction your code does.  Unlike most other DB platforms, which dictate the form factor of the data, Redis gives you the same tools you have in your code and you can use those tools to treat Redis as a shared memory pool for the whole application stack.  Figuring out how to start thinking in Redis can be a bit tricky at first but quickly becomes natural. 
 
@@ -280,3 +280,39 @@ This can also be used for aggregation type patterns using the set or sorted set 
 (integer) 3
 ```
 
+#### Many to Many:
+
+<pre>
+                                              +------------+
+                                              | Character  |                                       +------------+
+                                              +------------+          +-----------------+          |    Item    |
+                                              | name       |          | Character_Items |          +------------+
+                                              | server     |          +-----------------+          | item_id    |
+                                      +-----> | display    +--------> | character_id    +--------> | name       |
+                                      |       | class      |          | item_id         |          | stats      |
+                                      |       | race       |          +-----------------+          | description|
+                                      |       | user_id    |                                       +------------+
++-------------------------+           |       +------------+
+|User                     |           |
++-------------------------+           |       +------------+
+|email                    |           |       | Character  |                                      +------------+
+|password_hash            |           |       +------------+          +-----------------+         |    Item    |
+|notification_preferences +-----------------> | name       |          | Character_Items |         +------------+
+|account_level            |           |       | server     |          +-----------------+         | item_id    |
+|id                       |           |       | display    +--------> | character_id    +-------> | name       |
+|                         |           |       | class      |          | item_id         |         | stats      |
++-------------------------+           |       | race       |          +-----------------+         | description|
+                                      |       | user_id    |                                      +------------+
+                                      |       +------------+
+                                      |
+                                      |       +------------+
+                                      |       | Character  |                                      +------------+
+                                      |       +------------+          +-----------------+         |    Item    |
+                                      |       | name       |          | Character_Items |         +------------+
+                                      +-----> | server     |          +-----------------+         | item_id    |
+                                              | display    +--------> | character_id    +-------> | name       |
+                                              | class      |          | item_id         |         | stats      |
+                                              | race       |          +-----------------+         | description|
+                                              | user_id    |                                      +------------+
+                                              +------------+
+</pre>
